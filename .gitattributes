@@ -1,0 +1,19 @@
+# Consistent text files; Unity scenes/assets stay readable in diffs.
+* text=auto
+*.cs text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.unity text eol=lf
+*.prefab text eol=lf
+*.asset text eol=lf
+*.mat text eol=lf
+*.meta text eol=lf
+*.inputactions text eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.fbx binary
+*.wav binary
+*.mp3 binary

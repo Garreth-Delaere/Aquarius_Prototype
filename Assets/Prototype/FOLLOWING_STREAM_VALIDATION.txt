@@ -1,0 +1,25 @@
+2026-10-20 | Unity 6000.3.26f1 | Isolated batch Editor tests
+
+StreamTailValidation.txt
+PASS: original thin particles, curved gesture trail (bend=1,08m), entire stream transported over 40m, freely following head, bounded rolling tail, exact physical freeze snapshots, actual CharacterController ice traversal, independent structures, targeted melt, gravity and re-grab.
+
+WaterDepthValidation.txt
+PASS: forward/backward depth, camera-axis displacement, persistence, camera movement, min/max clamps, idle/frozen isolation, freezing adjusted water.
+
+WaterMotionValidation.txt
+PASS: target lag/no snap, catch-up and settling, stronger fast swipes, coherent still-input motion survives actual freezing, exact physical snapshots, committed ice remains still. Frozen-surface RMS change over one second=0,229 m; baseline=0,034 m; particle RMS=0,292 m.
+
+PillarCourseValidation.txt
+PASS: preserved sandbox/movement, four accessible basins, blocked direct route, clear alternate bend, visible destination, starting-basin construction, river reset with persistent ice, distinct goal arrival.
+
+MovementValidation.txt
+PASS: stationary jump with delayed midair movement, air direction reversal, 1 m jump without double jumping, 50-degree slope ascent, jump escape from 65-degree support.
+
+FreezeValidation.txt
+PASS: independent A/B/C, held-only freeze, preserved loose water, ramp traversal, committing while standing on old ice, walkable overlapping joins, target selection/occlusion, targeted melt, exact in-place restoration, falling/re-bending/re-freezing, reusable liquid budget, lossless above-budget melt, reset.
+
+StreamValidation
+PASS: finite source draw, held lift, gravity on release, ground contact, persistence, picking, no teleport, re-bending without new water, replenishing source, retained old puddles, reset.
+
+Baseline comparison: WaterDropletRenderer, WaterIceSurface, FirstPersonMotor, FirstPersonLook, FrozenWaterStructure and both PillarCourse/FreezeTraversalTest scenes match the pre-finite-volume checkpoint byte for byte. Only the water guide/tail behavior and its HUD message change at runtime.
+Manual Play Mode comparison of mouse feel, curves and edge placement remains required.

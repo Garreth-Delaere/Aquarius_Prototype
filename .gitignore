@@ -1,0 +1,61 @@
+# Unity-generated folders
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# Local checkpoints and tools
+/.checkpoints/
+/.vs/
+/.vscode/
+/.idea/
+/.codex/
+.vsconfig
+
+# Generated IDE files
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Build output, logs and local validation reports
+*.apk
+*.aab
+*.unitypackage
+*.app
+*.log
+/Water*Validation.txt
+/FreezeValidation.txt
+/MovementValidation.txt
+/PillarCourseValidation.txt
+/StreamTailValidation.txt
+/FireStationValidation.txt
+
+# Local environment / credentials
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+/Desktop.ini
+
+# Unity-generated asset caches
+/[Aa]ssets/AssetStoreTools*
+/[Aa]ssets/AddressableAssetsData/*/*.bin*
+/[Aa]ssets/StreamingAssets/aa.meta
+/[Aa]ssets/StreamingAssets/aa/*

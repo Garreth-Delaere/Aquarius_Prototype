@@ -1,5 +1,6 @@
 # Aquarius Prototype
 
+Latest local playtest: gentle ice bobbing, a smaller spherical resting cloud, and closer fast-gesture head tracking. See `Assets/Prototype/WATER_FEEL_POLISH.md` for tuning and three separate checks.
 Current feel iteration: slow guidance gathers a short water shape; quick gestures leave a stretched, curved stream that can be frozen during motion. See `Assets/Prototype/FOLLOWING_STREAM_TAIL.md` for tuning and the focused playtest.
 A first-person Unity prototype exploring water sculpting and freezing as traversal tools.
 

@@ -119,12 +119,16 @@ namespace Aquarius.Prototype.Editor
             // Isolate collision/join fixtures from timed retraction. Default gesture timing,
             // gathering, and freezing during motion are tested by StreamTailValidation.
             float moving = water.tailCatchUpSpeed, resting = water.gatheringSpeed;
+            float radius = water.restingRadius, boost = water.fastFollowBoost;
             try
             {
                 water.tailCatchUpSpeed = water.gatheringSpeed = 0;
+                // Keep this historical geometry fixture independent of compact-cloud and aiming changes.
+                // WaterFeelValidation separately exercises the default new shape, tracking and hover.
+                water.restingRadius = 0; water.fastFollowBoost = 1;
                 water.BeginSource(start); water.SetTarget(target, 0.7f); Step(water, 450);
             }
-            finally { water.tailCatchUpSpeed = moving; water.gatheringSpeed = resting; }
+            finally { water.tailCatchUpSpeed = moving; water.gatheringSpeed = resting; water.restingRadius = radius; water.fastFollowBoost = boost; }
         }
         static void Step(WaterStream water, int count) { for (int i = 0; i < count; i++) water.SimulateStep(1f / 90f); }
         static GameObject Box(Vector3 position, Vector3 size) { var obj = GameObject.CreatePrimitive(PrimitiveType.Cube); obj.transform.position = position; obj.transform.localScale = size; return obj; }

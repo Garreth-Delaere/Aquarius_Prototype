@@ -1,3 +1,5 @@
+Current polish notes: see WATER_FEEL_POLISH.md for spherical gathering, fast tracking, and rigid ice bobbing.
+
 # Pillar course — gesture-driven stretching
 
 Open **Aquarius > Open Pillar Course** (or `Assets/Scenes/PillarCourse.unity`) and press Play.
@@ -16,7 +18,7 @@ Select **Drawn water - persistent droplets > WaterStream > Gesture stretching**:
 | --- | --- | --- |
 | Tail Catch Up Speed | 3.5 m/s | Tail travel along the curve while guiding. Increase to require stronger motion; decrease to make long gestures easier. |
 | Gathering Speed | 2.5 m/s | Tail travel once the head settles. Increase for a shorter freezing window; decrease to allow more time. |
-| Compact Trail Length | 1 m | Short resting trail. This changes length, not droplet size. |
+| Compact Trail Length | 0.25 m | Short resting trail. This changes length, not droplet size. |
 
 Speed is measured from the actual smoothed head movement, not solely from mouse speed. Walking and scrolling can also move the water. The transition between moving/stationary catch-up is blended. Existing follow resistance remains, so the visible water responds gradually. The previous Tail Follow Fraction field is retained as hidden legacy scene data and is no longer active.
 
@@ -35,7 +37,7 @@ Inspector edits during Play Mode are temporary unless copied back after stopping
 
 ## Recovery
 
-The prior following-tail version is Git commit `5dc47b1`. This iteration is left as a reviewable local diff until playtested. The earlier finite-water/fire experiment remains banked locally outside Assets.
+The initial following-tail version is Git commit `5dc47b1`; the accepted gesture-driven version before the next polish step is `d63e69a`. This iteration is left as a reviewable local diff until playtested. The earlier finite-water/fire experiment remains banked locally outside Assets.
 
 See FOLLOWING_STREAM_VALIDATION.txt for the latest measured checks and their limits.
 

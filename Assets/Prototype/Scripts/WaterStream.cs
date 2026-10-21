@@ -22,7 +22,9 @@ namespace Aquarius.Prototype
         [Tooltip("Tail travel in metres/second once the guided head comes to rest.")]
         [Min(0f)] public float gatheringSpeed = 2.5f;
         [Tooltip("Short resting trail, in metres. Particle size stays unchanged.")]
-        [Min(0.1f)] public float compactTrailLength = 1f;
+        [Min(0.1f)] public float compactTrailLength = 0.25f;
+        [Tooltip("Radius of the gathered droplet cloud, not individual particle size.")]
+        [Min(0f)] public float restingRadius = 0.22f;
         [Min(0.1f)] public float pickupRadius = 1.8f;
         [Min(0)] public float gravity = 9.81f;
         [Min(1)] public float gentleResponse = 28f;
@@ -34,6 +36,8 @@ namespace Aquarius.Prototype
         [Min(0f)] public float wobbleAmplitude = 0.22f;
         [Min(0f)] public float wobbleSpeed = 0.6f;
         [Range(0.25f, 2f)] public float wobbleCycles = 1.1f;
+        [Tooltip("Fast-gesture head tracking boost. 1 restores the earlier follow response; the tail keeps its original resistance.")]
+        [Range(1f, 4f)] public float fastFollowBoost = 3f;
         public Vector3 SmoothedTarget => guidedTarget;
         public LayerMask environmentMask = ~0;
         public Transform ignoredPlayer;
@@ -137,7 +141,7 @@ namespace Aquarius.Prototype
             int restoredShape = nextShapeId++;
             foreach (var saved in structure.Snapshot)
             {
-                var drop = saved; drop.velocity = Vector3.zero; drop.grounded = false; drop.shapeId = restoredShape;
+                var drop = saved; drop.position += structure.Displacement; drop.velocity = Vector3.zero; drop.grounded = false; drop.shapeId = restoredShape;
                 droplets.Add(drop);
             }
             // Puddles that were sleeping on this structure must fall too.
@@ -171,9 +175,9 @@ namespace Aquarius.Prototype
             {
                 // Smooth the actual sculpting guide, then let each droplet catch up through its spring/drag.
                 // Fast swipes remain stronger, but never bypass the physical following step.
-                float response = Mathf.Max(0.1f, followResponsiveness) * Mathf.Lerp(1f, 1.35f, swipe);
+                float response = Mathf.Max(0.1f, followResponsiveness) * Mathf.Lerp(1f, 1.35f * Mathf.Max(1f, fastFollowBoost), swipe);
                 guidedTarget = Vector3.SmoothDamp(guidedTarget, target, ref followVelocity, 1f / response,
-                    Mathf.Max(0.1f, maximumFollowSpeed), dt);
+                    Mathf.Max(0.1f, maximumFollowSpeed) * Mathf.Lerp(1f, Mathf.Max(1f, fastFollowBoost), swipe), dt);
                 UpdateGuide(dt);
                 sourcePosition = guide[0]; // New droplets join the moving tail, never a permanent source tether.
                 if (drawing)
@@ -197,11 +201,13 @@ namespace Aquarius.Prototype
                 bool held = IsHeld && selectedSet.Contains(i);
                 if (!held && drop.grounded && drop.velocity.sqrMagnitude < 0.0009f) continue; // Static greybox: let settled puddles sleep.
                 Vector3 acceleration = Vector3.down * gravity;
+                float headFollow = 0;
                 if (held)
                 {
                     // Distributed moving lanes retain a readable stream while particles flow within it.
                     int count = Mathf.Max(1, selected.Count);
                     float phase = count == 1 ? 1f : 1f - slot / (float)(count - 1);
+                    headFollow = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(0.65f, 1f, phase)) * swipe;
                     float ripple = Mathf.Sin(elapsed * (3f + swipe * 4f) - phase * 15f) * 0.025f;
                     Vector3 along;
                     Vector3 desired = SampleGuide(Mathf.Clamp01(phase + ripple), out along);
@@ -209,17 +215,37 @@ namespace Aquarius.Prototype
                     if (side.sqrMagnitude < 0.01f) side = Vector3.right;
                     float lane = (slot % 5 - 2) * dropletRadius * 1.1f;
                     desired += side * lane + Vector3.up * (Mathf.Sin(slot * 2.4f + elapsed * 4f) * dropletRadius * 0.55f);
+                    float roundness = restingRadius <= 0 ? 0 : 1f - Mathf.SmoothStep(0, 1,
+                        Mathf.InverseLerp(compactTrailLength, Mathf.Max(compactTrailLength + 0.01f, restingRadius * 4f), guideLength));
+                    if (roundness > 0)
+                    {
+                        Vector3 centre = SampleGuide(0.5f, out Vector3 axis);
+                        if (axis.sqrMagnitude < 0.01f) axis = Vector3.forward;
+                        Vector3 across = Vector3.Cross(Vector3.up, axis).normalized;
+                        if (across.sqrMagnitude < 0.01f) across = Vector3.right;
+                        Vector3 normal = Vector3.Cross(axis, across).normalized;
+                        float u = phase * 2f - 1f;
+                        float ring = Mathf.Sqrt(Mathf.Max(0, 1f - u * u)) * restingRadius;
+                        float angle = slot * 2.399963f + elapsed * 0.5f;
+                        Vector3 sphere = centre + axis * (u * restingRadius) +
+                            (across * Mathf.Cos(angle) + normal * Mathf.Sin(angle)) * ring;
+                        desired = Vector3.Lerp(desired, sphere, roundness);
+                    }
                     // A coherent travelling wave moves the centreline, not just individual lanes.
                     // Its wavelength spans many freeze sections, so averaging does not erase it.
-                    float wave = elapsed * wobbleSpeed * Mathf.PI * 2f - phase * wobbleCycles * Mathf.PI * 2f;
+                    float wavePhase = Mathf.Lerp(phase, 0.5f, roundness);
+                    float wave = elapsed * wobbleSpeed * Mathf.PI * 2f - wavePhase * wobbleCycles * Mathf.PI * 2f;
                     float envelope = 0.15f + 0.85f * Mathf.Sin(Mathf.PI * phase);
-                    float amplitude = Mathf.Max(0, wobbleAmplitude) * envelope;
-                    desired += side * (Mathf.Sin(wave) * amplitude) + Vector3.up * (Mathf.Cos(wave * 0.83f + phase * 1.7f) * amplitude * 0.5f);
+                    float amplitude = Mathf.Max(0, wobbleAmplitude) * Mathf.Lerp(envelope, 0.5f, roundness);
+                    desired += side * (Mathf.Sin(wave) * amplitude) + Vector3.up * (Mathf.Cos(wave * 0.83f + wavePhase * 1.7f) * amplitude * 0.5f);
                     // Counter gravity only while held. No tether survives release.
-                    acceleration = (desired - drop.position) * Mathf.Lerp(gentleResponse, fastResponse, swipe) - drop.velocity * heldDrag;
+                    // Let the leading drops inherit some guide velocity during fast gestures.
+                    // The tail retains its original lag, so improved aiming does not erase the snake.
+                    Vector3 leadingVelocity = followVelocity * headFollow * (1f - 1f / Mathf.Max(1f, fastFollowBoost));
+                    acceleration = (desired - drop.position) * Mathf.Lerp(gentleResponse, fastResponse, swipe) - (drop.velocity - leadingVelocity) * heldDrag;
                     slot++;
                 }
-                drop.velocity = Vector3.ClampMagnitude(drop.velocity + acceleration * dt, held ? 12f : 22f);
+                drop.velocity = Vector3.ClampMagnitude(drop.velocity + acceleration * dt, held ? 12f * Mathf.Lerp(1f, Mathf.Max(1f, fastFollowBoost), headFollow) : 22f);
                 if (!held) drop.velocity *= Mathf.Exp(-0.15f * dt);
                 MoveWithCollision(ref drop, dt, held);
                 droplets[i] = drop;

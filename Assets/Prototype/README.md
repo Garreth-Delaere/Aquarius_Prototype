@@ -1,5 +1,6 @@
 # Current prototype
 
+Latest local playtest: stronger floating-ice bobbing and stationary floor/wall-connected ice. The gradient attempt was reverted after visible rendering artifacts; the original water renderer is restored. See READABILITY_AND_CONNECTED_ICE.md.
 Latest local playtest: gentle ice bobbing, a smaller spherical resting cloud, and closer fast-gesture head tracking. See WATER_FEEL_POLISH.md for tuning and three separate checks.
 Current feel iteration: timed tail catch-up keeps slow guidance compact; quick gestures leave a stretched curved wake that can be frozen. See FOLLOWING_STREAM_TAIL.md.
 Current playtest: **Aquarius > Open Pillar Course**. The earlier thin stream/ice behavior is restored, with one adjustment: a free following tail instead of a source anchor. See FOLLOWING_STREAM_TAIL.md. The finite-water/fire experiment is banked outside Assets; wait for feedback before expanding this step.

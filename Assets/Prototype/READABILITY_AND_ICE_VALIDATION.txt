@@ -1,0 +1,25 @@
+2026-10-21 | Post-rollback Unity 6000.3.26f1 isolated headless verification
+
+Gradient reverted after user-reported black plane and stray lines. Original water renderer restored from ecb7b86. Actual rendered appearance still requires Unity Play Mode confirmation; headless tests cannot verify it.
+
+PASS: floor/wall anchoring, player exclusion, support removal without snap, grounded ice chains, no self-anchoring cycles, curved-bounds false-positive rejection.
+
+PASS: physical ice bobbing peak-to-peak=0,120m, bounded motion, unchanged shared mesh, real CharacterController crosses two live-sculpted platforms with different hover phases using 0.2m step height, support over multiple cycles, melt restores current displaced position and preserves the other ice.
+
+PASS: resting particle envelope=(0.59, 0.59, 0.59)m, approximately spherical, unchanged particle size/count, fast gesture stretches beyond 3m, freezing preserved.
+
+PASS: fast visible-head error=2,14m -> 0,71m, stretched span=8,65m, slow guidance resistance unchanged.
+
+PASS: same path at slow/fast speeds (0,50m / 6,25m physical span), unchanged thin particles/extraction, moving tail, smooth gathering (6,25m -> 2,16m after 2s), curved fast gesture (bend=2,10m), exact freeze snapshots, real CharacterController traversal, frozen geometry stays still, independent structures, targeted melt, gravity and re-grab.
+
+PASS: forward/backward depth, camera-axis displacement, persistence, camera movement, min/max clamps, idle/frozen isolation, freezing adjusted water.
+
+PASS: target lag/no snap, catch-up and settling, stronger fast swipes, coherent still-input motion survives actual freezing, exact physical snapshots, committed ice remains still. Frozen-surface RMS change over one second=0,119 m; baseline=0,015 m; particle RMS=0,157 m.
+
+PASS: finite source draw, held lift, gravity on release, ground contact, persistence, picking, no teleport, re-bending without new water, replenishing source, retained old puddles, reset.
+
+PASS: preserved sandbox/movement, four accessible basins, blocked direct route, clear alternate bend, visible destination, starting-basin construction, river reset with persistent ice, distinct goal arrival.
+
+PASS: stationary jump with delayed midair movement, air direction reversal, 1 m jump without double jumping, 50-degree slope ascent, jump escape from 65-degree support.
+
+PASS: independent A/B/C, held-only freeze, preserved loose water, ramp traversal, committing while standing on old ice, walkable overlapping joins, target selection/occlusion, targeted melt, exact in-place restoration, falling/re-bending/re-freezing, reusable liquid budget, lossless above-budget melt, reset.

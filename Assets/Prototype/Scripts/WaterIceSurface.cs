@@ -16,8 +16,10 @@ namespace Aquarius.Prototype
         [Range(0, 2)] public int smoothingPasses = 2;
         [Range(0.01f, 0.25f)] public float edgeBevel = 0.15f;
         [Header("Magic ice hover")]
-        [Range(0f, 0.1f)] public float hoverAmplitude = 0.03f;
+        [Range(0f, 0.1f)] public float hoverAmplitude = 0.06f;
         [Min(0f)] public float hoverFrequency = 0.35f;
+        [Tooltip("Surface contact tolerance in metres. Floors, walls and grounded ice connections stop hover.")]
+        [Range(0.001f, 0.05f)] public float anchorContactTolerance = 0.02f;
         GameObject iceObject;
         Mesh mesh;
         MeshCollider collision;
@@ -30,7 +32,7 @@ namespace Aquarius.Prototype
 
         public void CopySettingsFrom(WaterIceSurface template)
         {
-            hoverAmplitude = template.hoverAmplitude; hoverFrequency = template.hoverFrequency;
+            hoverAmplitude = template.hoverAmplitude; hoverFrequency = template.hoverFrequency; anchorContactTolerance = template.anchorContactTolerance;
             iceMaterial = template.iceMaterial; dropletsPerSection = template.dropletsPerSection;
             surfacePadding = template.surfacePadding; thickness = template.thickness;
             maximumConnectionGap = template.maximumConnectionGap; smoothingPasses = template.smoothingPasses; edgeBevel = template.edgeBevel;

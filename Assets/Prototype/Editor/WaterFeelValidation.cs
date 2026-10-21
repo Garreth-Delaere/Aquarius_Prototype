@@ -38,7 +38,7 @@ namespace Aquarius.Prototype.Editor
                     cc.Move(new Vector3(0,-2,i<330?1.5f:0)/60);
                     Require(cc.transform.position.y>original.min.y-0.2f,"Player must remain supported throughout the hover cycle.");
                 }
-                Require(high-low>0.05f && high-low<0.065f,"Ice should move a few centimetres, not drift: "+(high-low));
+                Require(high-low>0.11f && high-low<0.125f,"Ice should move a few centimetres, not drift: "+(high-low));
                 Require(cc.transform.position.z>original.max.z+1,"Player must cross the live-sculpted bobbing join: position="+cc.transform.position+" A="+original+" B="+second.Surface.Collision.bounds);
                 Require(ice.Surface.Collision.sharedMesh==mesh,"Hover must not rebuild the frozen mesh.");
                 Require(ice.Surface.Collision.GetComponent<MeshFilter>().sharedMesh==mesh,"Render and collision must share the same moving geometry.");

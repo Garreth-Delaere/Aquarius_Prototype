@@ -12,52 +12,74 @@ namespace Aquarius.Prototype.Editor
         [MenuItem("Aquarius/Validate Following Stream Tail")]
         public static void Run()
         {
-            Scene previous = SceneManager.GetActiveScene();
+            Scene previous=SceneManager.GetActiveScene();
             if(!Application.isBatchMode && string.IsNullOrEmpty(previous.path)) { Debug.LogWarning("Save the scene first."); return; }
-            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene,Application.isBatchMode ? NewSceneMode.Single : NewSceneMode.Additive);
+            var scene=EditorSceneManager.NewScene(NewSceneSetup.EmptyScene,Application.isBatchMode ? NewSceneMode.Single : NewSceneMode.Additive);
             SceneManager.SetActiveScene(scene);
             string report=Path.GetFullPath(Path.Combine(Application.dataPath,"../StreamTailValidation.txt"));
             try
             {
-                var w=new GameObject("Following stream validation").AddComponent<WaterStream>(); w.Initialize(); w.wobbleAmplitude=0;
-                Vector3 origin=new Vector3(1000,3,1000); w.BeginSource(origin);
-                for(int i=0;i<240;i++)
-                {
-                    float angle=i/239f*Mathf.PI*0.5f;
-                    w.SetTarget(origin+new Vector3(4*(1-Mathf.Cos(angle)),0,4*Mathf.Sin(angle)),0.8f); w.SimulateStep(1f/90);
-                }
-                Step(w,90);
-                Vector3 first=w.Droplets[0].position,last=w.Droplets[w.Droplets.Count-1].position;
-                Vector3 line=(last-first).normalized; float bend=0;
-                foreach(var d in w.Droplets) bend=Mathf.Max(bend,Vector3.Cross(d.position-first,line).magnitude);
-                Require(bend>0.35f,"A curved gesture must retain a curved trail, rather than a straight tether: bend="+bend);
-                Require(w.Droplets.Count==w.dropletsPerDraw && Mathf.Approximately(w.dropletRadius,0.075f),"Original particle count and thin particle size must remain intact.");
-                w.ResetWater(); w.BeginSource(origin);
-                for(int i=0;i<900;i++) { w.SetTarget(origin+Vector3.forward*i*0.05f,0.5f); w.SimulateStep(1f/90); }
-                Step(w,90);
-                foreach(var d in w.Droplets) Require(d.position.z>origin.z+27,"The entire stream, including its tail, must leave the source behind.");
-                Require(Vector3.Distance(w.SmoothedTarget,origin+Vector3.forward*44.95f)<0.02f,"Head must keep following beyond the old source reach.");
-                Require(Vector3.Distance(w.Droplets[0].position,w.Droplets[w.Droplets.Count-1].position)<w.maximumStreamLength+0.5f,"Following stream must remain bounded.");
-                var saved=new Vector3[w.Droplets.Count]; for(int i=0;i<saved.Length;i++) saved[i]=w.Droplets[i].position;
-                Require(w.FreezeHeld(),"Following stream must freeze: "+w.FreezeMessage);
-                var a=w.FrozenStructures[0]; for(int i=0;i<saved.Length;i++) Require(a.Snapshot[i].position==saved[i],"Freeze must snapshot actual curved stream positions.");
-                var bounds=a.Surface.Collision.bounds; var cc=new GameObject("Stream walker").AddComponent<CharacterController>();
-                cc.height=1.75f; cc.radius=0.3f; cc.center=Vector3.up*0.875f; cc.stepOffset=0.2f; cc.slopeLimit=55; cc.skinWidth=0.025f;
-                Require(a.Surface.Collision.Raycast(new Ray(new Vector3(bounds.center.x,bounds.max.y+1,bounds.min.z+0.5f),Vector3.down),out var top,3),"Frozen stream needs a walking surface.");
+                Vector3 origin=new Vector3(1000,3,1000);
+                var slow=Create(origin); DrawLine(slow,origin,12,1080);
+                var fast=Create(origin+Vector3.right*25); DrawLine(fast,origin+Vector3.right*25,12,135);
+                float slowSpan=Span(slow),fastSpan=Span(fast);
+                Require(slowSpan<1.8f && fastSpan>3 && fastSpan>slowSpan*2,"Identical 12m paths must depend on actual motion speed: slow="+slowSpan+" fast="+fastSpan);
+                foreach(var d in slow.Droplets) Require(d.position.z>origin.z+9,"A compact slowly carried shape must leave its source.");
+                Require(fast.Droplets.Count==fast.dropletsPerDraw && Mathf.Approximately(fast.dropletRadius,0.075f),"Extraction count and particle size must stay unchanged.");
+                var snapshot=new Vector3[fast.Droplets.Count]; for(int i=0;i<snapshot.Length;i++) snapshot[i]=fast.Droplets[i].position;
+                Require(fast.FreezeHeld(),"Fast-drawn stream must freeze: "+fast.FreezeMessage);
+                var ice=fast.FrozenStructures[0]; var vertices=ice.Surface.Collision.sharedMesh.vertices;
+                for(int i=0;i<snapshot.Length;i++) Require(ice.Snapshot[i].position==snapshot[i],"Freeze must preserve actual moving water positions.");
+                var bounds=ice.Surface.Collision.bounds;
+                var cc=new GameObject("Gesture platform walker").AddComponent<CharacterController>(); cc.height=1.75f; cc.radius=0.3f;
+                cc.center=Vector3.up*0.875f; cc.stepOffset=0.2f; cc.slopeLimit=55; cc.skinWidth=0.025f;
+                Require(ice.Surface.Collision.Raycast(new Ray(new Vector3(bounds.center.x,bounds.max.y+1,bounds.min.z+0.5f),Vector3.down),out var top,3),"Gesture platform needs a solid top.");
                 cc.transform.position=top.point+Vector3.up*0.03f; Physics.SyncTransforms(); float start=cc.transform.position.z;
-                for(int i=0;i<90;i++) cc.Move(new Vector3(0,-4,2)/60f);
-                Require(cc.transform.position.z>start+2 && cc.transform.position.y>bounds.min.y-0.3f,"Original ice surface must still support walking.");
-                UnityEngine.Object.DestroyImmediate(cc.gameObject);
-                w.BeginSource(origin+Vector3.right*8); w.SetTarget(origin+new Vector3(8,0,4),0.5f); Step(w,270);
-                Require(w.FreezeHeld() && a.IsSolid && w.FrozenCount==2,"Additional independent structures must preserve previous ice.");
-                Require(w.Melt(a) && w.FrozenCount==1 && w.Droplets.Count==saved.Length,"Targeted melt must restore the stream without affecting other ice.");
-                w.Release(); Step(w,90); Require(w.Droplets[0].position.y<saved[0].y-1,"Released/melted water must fall.");
-                Require(w.BeginPickup(0),"Released water must remain re-grabbable.");
-                string success="PASS: original thin particles, curved gesture trail (bend="+bend.ToString("F2")+"m), entire stream transported over 40m, freely following head, bounded rolling tail, exact physical freeze snapshots, actual CharacterController ice traversal, independent structures, targeted melt, gravity and re-grab.";
+                for(int i=0;i<75;i++) cc.Move(new Vector3(0,-4,2)/60f);
+                Require(cc.transform.position.z>start+2 && cc.transform.position.y>bounds.min.y-0.3f,"A platform frozen during motion must support walking.");
+                UnityEngine.Object.DestroyImmediate(cc.gameObject); Step(fast,360);
+                var fixedVertices=ice.Surface.Collision.sharedMesh.vertices;
+                for(int i=0;i<vertices.Length;i++) Require(vertices[i]==fixedVertices[i],"Frozen platforms must never keep gathering.");
+                var gather=Create(origin+Vector3.right*50); DrawLine(gather,origin+Vector3.right*50,12,135);
+                float before=Span(gather); var first=gather.Droplets[0].position; Step(gather,1);
+                Require(Vector3.Distance(first,gather.Droplets[0].position)<0.15f,"Stopping must not snap particles.");
+                Step(gather,179); float afterTwo=Span(gather); Require(afterTwo<before*0.75f,"Stationary held water must gather meaningfully within two seconds: "+before+" -> "+afterTwo);
+                Step(gather,270); Require(Span(gather)<1.8f,"Gathering must settle into a short resting trail.");
+                var curve=Create(origin+Vector3.right*75); Vector3 curveOrigin=origin+Vector3.right*75;
+                for(int i=0;i<180;i++)
+                {
+                    float angle=(i+1)/180f*Mathf.PI*0.75f;
+                    curve.SetTarget(curveOrigin+new Vector3(8*(1-Mathf.Cos(angle)),0,8*Mathf.Sin(angle)),0.7f); curve.SimulateStep(1f/90);
+                }
+                Vector3 a=curve.Droplets[0].position,b=curve.Droplets[curve.Droplets.Count-1].position;
+                Vector3 direction=(b-a).normalized; float bend=0;
+                foreach(var d in curve.Droplets) bend=Mathf.Max(bend,Vector3.Cross(d.position-a,direction).magnitude);
+                Require(bend>0.4f,"Fast curved gestures must leave a curved wake: bend="+bend);
+                Require(curve.FreezeHeld(),"Curved moving water must still freeze.");
+                fast.BeginSource(origin+new Vector3(25,0,20)); Step(fast,180);
+                Require(fast.FreezeHeld() && ice.IsSolid && fast.FrozenCount==2,"A fresh structure must preserve earlier ice.");
+                Require(fast.Melt(ice) && fast.FrozenCount==1 && fast.Droplets.Count==snapshot.Length,"Targeted melting must restore original drops and preserve other ice.");
+                Step(fast,90); Require(fast.Droplets[0].position.y<snapshot[0].y-1,"Melted water must fall normally.");
+                Require(fast.BeginPickup(0),"Dropped water must remain re-grabbable.");
+                string success="PASS: same path at slow/fast speeds ("+slowSpan.ToString("F2")+"m / "+fastSpan.ToString("F2")+"m physical span), unchanged thin particles/extraction, moving tail, smooth gathering ("+before.ToString("F2")+"m -> "+afterTwo.ToString("F2")+"m after 2s), curved fast gesture (bend="+bend.ToString("F2")+"m), exact freeze snapshots, real CharacterController traversal, frozen geometry stays still, independent structures, targeted melt, gravity and re-grab.";
                 File.WriteAllText(report,success); Debug.Log(success);
             }
             catch(Exception e) { File.WriteAllText(report,"FAIL: "+e); Debug.LogException(e); }
             finally { if(previous.IsValid() && previous.isLoaded) SceneManager.SetActiveScene(previous); if(SceneManager.sceneCount>1) EditorSceneManager.CloseScene(scene,true); }
+        }
+        static WaterStream Create(Vector3 origin)
+        {
+            var w=new GameObject("Gesture water").AddComponent<WaterStream>(); w.Initialize(); w.wobbleAmplitude=0; w.BeginSource(origin); Step(w,180); return w;
+        }
+        static void DrawLine(WaterStream w,Vector3 origin,float distance,int steps)
+        {
+            // Same swipe-strength input: geometry must respond to measured world motion speed.
+            for(int i=0;i<steps;i++) { w.SetTarget(origin+Vector3.forward*distance*(i+1)/steps,0.7f); w.SimulateStep(1f/90); }
+        }
+        static float Span(WaterStream w)
+        {
+            float min=float.PositiveInfinity,max=float.NegativeInfinity;
+            foreach(var d in w.Droplets) { min=Mathf.Min(min,d.position.z); max=Mathf.Max(max,d.position.z); } return max-min;
         }
         public static void RunAll() { Run(); WaterTactileValidation.RunDepth(); WaterTactileValidation.RunMotion(); StreamValidation.Run(); PillarCourseValidation.Run(); MovementValidation.Run(); }
         static void Step(WaterStream w,int n) { for(int i=0;i<n;i++) w.SimulateStep(1f/90); }

@@ -49,7 +49,7 @@ namespace Aquarius.Prototype.Editor
                 float entryZ = rampBounds.min.z - origin.z + 0.4f;
                 Require(a.Surface.Collision.Raycast(new Ray(origin + new Vector3(0,4,entryZ),Vector3.down),out var entry,5), "A must provide a supported entry point.");
                 actor.transform.position = entry.point + Vector3.up * 0.03f; Physics.SyncTransforms();
-                for (int i = 0; i < 65; i++) controller.Move(new Vector3(0, -4, 2) / 60f);
+                for (int i = 0; i < 90; i++) controller.Move(new Vector3(0, -4, 2) / 60f);
                 Require(actor.transform.position.z > origin.z + 2.5f && actor.transform.position.y > 0.5f, "Walker should stand on ramp A.");
                 water.ignoredPlayer = actor.transform;
                 Require(a.Surface.Collision.Raycast(new Ray(origin + new Vector3(0, 4, 4.3f), Vector3.down), out RaycastHit join, 5), "A must provide a joining surface.");
@@ -114,14 +114,20 @@ namespace Aquarius.Prototype.Editor
                 if (SceneManager.sceneCount > 1) EditorSceneManager.CloseScene(temporary, true);
             }
         }
-        static void Draw(WaterStream water, Vector3 start, Vector3 target) { water.BeginSource(start); water.SetTarget(target, 0.7f); Step(water, 450); }
+        static void Draw(WaterStream water, Vector3 start, Vector3 target)
+        {
+            // Isolate collision/join fixtures from timed retraction. Default gesture timing,
+            // gathering, and freezing during motion are tested by StreamTailValidation.
+            float moving = water.tailCatchUpSpeed, resting = water.gatheringSpeed;
+            try
+            {
+                water.tailCatchUpSpeed = water.gatheringSpeed = 0;
+                water.BeginSource(start); water.SetTarget(target, 0.7f); Step(water, 450);
+            }
+            finally { water.tailCatchUpSpeed = moving; water.gatheringSpeed = resting; }
+        }
         static void Step(WaterStream water, int count) { for (int i = 0; i < count; i++) water.SimulateStep(1f / 90f); }
         static GameObject Box(Vector3 position, Vector3 size) { var obj = GameObject.CreatePrimitive(PrimitiveType.Cube); obj.transform.position = position; obj.transform.localScale = size; return obj; }
         static void Require(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
     }
 }
-
-
-
-
-

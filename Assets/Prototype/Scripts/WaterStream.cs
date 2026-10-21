@@ -15,8 +15,14 @@ namespace Aquarius.Prototype
         [Min(1)] public float emissionRate = 100f;
         [Min(0.02f)] public float dropletRadius = 0.075f;
         [Min(1)] public float maximumStreamLength = 14f;
-        [Tooltip("Fraction of head movement carried into the tail. Keeps the old sculpting trail, but frees it from the source.")]
-        [Range(0.05f, 0.5f)] public float tailFollowFraction = 0.2f;
+        [HideInInspector] public float tailFollowFraction = 0.2f; // Legacy scene data; superseded by timed catch-up.
+        [Header("Gesture stretching")]
+        [Tooltip("Tail travel along the curve in metres/second while guiding. Head motion must outrun this to stretch the stream.")]
+        [Min(0f)] public float tailCatchUpSpeed = 3.5f;
+        [Tooltip("Tail travel in metres/second once the guided head comes to rest.")]
+        [Min(0f)] public float gatheringSpeed = 2.5f;
+        [Tooltip("Short resting trail, in metres. Particle size stays unchanged.")]
+        [Min(0.1f)] public float compactTrailLength = 1f;
         [Min(0.1f)] public float pickupRadius = 1.8f;
         [Min(0)] public float gravity = 9.81f;
         [Min(1)] public float gentleResponse = 28f;
@@ -168,7 +174,7 @@ namespace Aquarius.Prototype
                 float response = Mathf.Max(0.1f, followResponsiveness) * Mathf.Lerp(1f, 1.35f, swipe);
                 guidedTarget = Vector3.SmoothDamp(guidedTarget, target, ref followVelocity, 1f / response,
                     Mathf.Max(0.1f, maximumFollowSpeed), dt);
-                UpdateGuide();
+                UpdateGuide(dt);
                 sourcePosition = guide[0]; // New droplets join the moving tail, never a permanent source tether.
                 if (drawing)
                 {
@@ -219,24 +225,27 @@ namespace Aquarius.Prototype
                 droplets[i] = drop;
             }
         }
-        void UpdateGuide()
+        void UpdateGuide(float dt)
         {
             int last = guide.Count - 1;
-            Vector3 movement = guidedTarget - guide[last];
-            // Keep the original gesture breadcrumbs, but gently carry their whole history
-            // behind the head. The first point has no permanent relationship to the source.
-            Vector3 drift = movement * Mathf.Clamp(tailFollowFraction, 0.05f, 0.5f);
-            for (int i = 0; i < last; i++) guide[i] += drift;
+            float headSpeed = Vector3.Distance(guidedTarget, guide[last]) / Mathf.Max(dt, 0.00001f);
+            // The head records its actual smoothed trajectory. The tail travels along that
+            // same curve every second, so only sufficiently fast motion can leave a long wake.
             guide[last] = guidedTarget;
             if (Vector3.Distance(guide[last - 1], guide[last]) > 0.4f && guide.Count < 100)
                 guide.Add(guidedTarget);
 
             guideLength = 0;
             for (int i = 1; i < guide.Count; i++) guideLength += Vector3.Distance(guide[i - 1], guide[i]);
-            float excess = Mathf.Max(0, guideLength - Mathf.Max(1f, maximumStreamLength));
-            AtLengthLimit = excess > 0.001f;
-            // At full extension discard the oldest part of the trail, not head movement.
-            // Curves travel behind the player instead of becoming a stopped straight tether.
+            float maximum = Mathf.Max(1f, maximumStreamLength);
+            float restingLength = Mathf.Clamp(compactTrailLength, 0.1f, maximum);
+            float catchUp = Mathf.Lerp(Mathf.Max(0, gatheringSpeed), Mathf.Max(0, tailCatchUpSpeed),
+                Mathf.InverseLerp(0.1f, 0.75f, headSpeed));
+            float excess = Mathf.Max(Mathf.Max(0, guideLength - maximum),
+                Mathf.Min(catchUp * dt, Mathf.Max(0, guideLength - restingLength)));
+            AtLengthLimit = guideLength > maximum;
+            // Remove distance from the oldest end, including while stationary. Curves retract
+            // along their history rather than being straightened or teleported toward the head.
             while (excess > 0.0001f && guide.Count >= 2)
             {
                 float length = Vector3.Distance(guide[0], guide[1]);
@@ -318,8 +327,3 @@ namespace Aquarius.Prototype
         }
     }
 }
-
-
-
-
-

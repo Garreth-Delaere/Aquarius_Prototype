@@ -1,5 +1,6 @@
 # Current prototype
 
+Current feel iteration: timed tail catch-up keeps slow guidance compact; quick gestures leave a stretched curved wake that can be frozen. See FOLLOWING_STREAM_TAIL.md.
 Current playtest: **Aquarius > Open Pillar Course**. The earlier thin stream/ice behavior is restored, with one adjustment: a free following tail instead of a source anchor. See FOLLOWING_STREAM_TAIL.md. The finite-water/fire experiment is banked outside Assets; wait for feedback before expanding this step.
 
 Latest control update: scroll while bending to push/pull water along camera forward. Held water now has coherent physical waves and catch-up resistance. See WATER_TACTILE_CONTROLS.md for Inspector settings, independent tests, and validation results.

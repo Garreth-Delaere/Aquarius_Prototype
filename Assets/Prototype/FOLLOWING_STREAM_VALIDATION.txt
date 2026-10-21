@@ -1,13 +1,13 @@
-2026-10-20 | Unity 6000.3.26f1 | Isolated batch Editor tests
+2026-10-21 | Unity 6000.3.26f1 | Timed tail catch-up
 
 StreamTailValidation.txt
-PASS: original thin particles, curved gesture trail (bend=1,08m), entire stream transported over 40m, freely following head, bounded rolling tail, exact physical freeze snapshots, actual CharacterController ice traversal, independent structures, targeted melt, gravity and re-grab.
+PASS: same path at slow/fast speeds (1,01m / 5,61m physical span), unchanged thin particles/extraction, moving tail, smooth gathering (5,61m -> 2,59m after 2s), curved fast gesture (bend=1,78m), exact freeze snapshots, real CharacterController traversal, frozen geometry stays still, independent structures, targeted melt, gravity and re-grab.
 
 WaterDepthValidation.txt
 PASS: forward/backward depth, camera-axis displacement, persistence, camera movement, min/max clamps, idle/frozen isolation, freezing adjusted water.
 
 WaterMotionValidation.txt
-PASS: target lag/no snap, catch-up and settling, stronger fast swipes, coherent still-input motion survives actual freezing, exact physical snapshots, committed ice remains still. Frozen-surface RMS change over one second=0,229 m; baseline=0,034 m; particle RMS=0,292 m.
+PASS: target lag/no snap, catch-up and settling, stronger fast swipes, coherent still-input motion survives actual freezing, exact physical snapshots, committed ice remains still. Frozen-surface RMS change over one second=0,230 m; baseline=0,009 m; particle RMS=0,246 m.
 
 PillarCourseValidation.txt
 PASS: preserved sandbox/movement, four accessible basins, blocked direct route, clear alternate bend, visible destination, starting-basin construction, river reset with persistent ice, distinct goal arrival.
@@ -21,5 +21,9 @@ PASS: independent A/B/C, held-only freeze, preserved loose water, ramp traversal
 StreamValidation
 PASS: finite source draw, held lift, gravity on release, ground contact, persistence, picking, no teleport, re-bending without new water, replenishing source, retained old puddles, reset.
 
-Baseline comparison: WaterDropletRenderer, WaterIceSurface, FirstPersonMotor, FirstPersonLook, FrozenWaterStructure and both PillarCourse/FreezeTraversalTest scenes match the pre-finite-volume checkpoint byte for byte. Only the water guide/tail behavior and its HUD message change at runtime.
-Manual Play Mode comparison of mouse feel, curves and edge placement remains required.
+The new default behavior is tested using the same 12m target path at two speeds with identical swipe-strength input. Fast-drawn live geometry is frozen immediately and traversed using a real CharacterController. Gathering, curved gestures and static committed ice are also tested with default catch-up settings.
+
+The older FreezeValidation overlap/collision fixtures temporarily set catch-up/gathering rates to zero while constructing their predefined geometry; defaults are restored before subsequent operations. This isolates collision and join checks from gesture timing.
+
+Only WaterStream.cs changes runtime behavior. Renderer, ice/collision implementation, controls, movement, scenes, package configuration and fire experiment are unchanged. Subjective mouse feel, freeze timing on pillar edges and URP visuals still require manual Play Mode testing.
+Prior Git baseline: 5dc47b118b43dc88faeb8886c3346a47b25bde47. Changes remain local and uncommitted for playtesting.

@@ -53,6 +53,8 @@ namespace Aquarius.Prototype
         readonly List<Vector3> guide = new List<Vector3>();
         readonly List<float> distances = new List<float>();
         readonly RaycastHit[] hits = new RaycastHit[32];
+        readonly List<int> absorbed = new List<int>();
+        readonly List<int> remappedSelection = new List<int>();
         readonly HashSet<int> selectedSet = new HashSet<int>();
         Vector3 sourcePosition, target, guidedTarget, followVelocity;
         float emission, swipe, elapsed, accumulator, guideLength;
@@ -106,6 +108,10 @@ namespace Aquarius.Prototype
         public void SetTarget(Vector3 position, float speed) { target = position; swipe = Mathf.Clamp01(speed); }
         public void Release()
         {
+            // Recheck support after release, even if held water was motionless on the ground.
+            foreach (int index in selected)
+                if (index >= 0 && index < droplets.Count)
+                { var drop = droplets[index]; drop.grounded = false; droplets[index] = drop; }
             IsHeld = drawing = false; selected.Clear(); selectedSet.Clear(); guide.Clear(); distances.Clear();
             emission = 0; swipe = 0; followVelocity = Vector3.zero; AtLengthLimit = false;
         }
@@ -194,6 +200,7 @@ namespace Aquarius.Prototype
                     emission = Mathf.Min(emission, 1f);
                 }
             }
+            absorbed.Clear();
             int slot = 0;
             for (int i = 0; i < droplets.Count; i++)
             {
@@ -247,9 +254,27 @@ namespace Aquarius.Prototype
                 }
                 drop.velocity = Vector3.ClampMagnitude(drop.velocity + acceleration * dt, held ? 12f * Mathf.Lerp(1f, Mathf.Max(1f, fastFollowBoost), headFollow) : 22f);
                 if (!held) drop.velocity *= Mathf.Exp(-0.15f * dt);
-                MoveWithCollision(ref drop, dt, held);
+                if (MoveWithCollision(ref drop, dt, held)) absorbed.Add(i);
                 droplets[i] = drop;
             }
+            RemoveAbsorbed();
+        }
+        // Compact once after simulation; preserve order and held indices when older loose water vanishes.
+        void RemoveAbsorbed()
+        {
+            if (absorbed.Count == 0) return;
+            remappedSelection.Clear();
+            int write = 0, removed = 0;
+            for (int read = 0; read < droplets.Count; read++)
+            {
+                if (removed < absorbed.Count && absorbed[removed] == read) { removed++; continue; }
+                droplets[write] = droplets[read];
+                if (selectedSet.Contains(read)) remappedSelection.Add(write);
+                write++;
+            }
+            droplets.RemoveRange(write, droplets.Count - write);
+            selected.Clear(); selected.AddRange(remappedSelection);
+            selectedSet.Clear(); foreach (int index in selected) selectedSet.Add(index);
         }
         void UpdateGuide(float dt)
         {
@@ -297,7 +322,7 @@ namespace Aquarius.Prototype
             }
             return sourcePosition;
         }
-        void MoveWithCollision(ref Droplet drop, float dt, bool held)
+        bool MoveWithCollision(ref Droplet drop, float dt, bool held)
         {
             drop.grounded = false;
             float radius = dropletRadius * 0.6f;
@@ -312,6 +337,7 @@ namespace Aquarius.Prototype
                 for (int j = 0; j < count; j++)
                     if (Valid(hits[j].collider) && hits[j].distance < nearest) { nearest = hits[j].distance; hit = j; }
                 if (hit < 0) { drop.position += delta; break; }
+                if (!held && Absorbs(hits[hit].collider)) return true;
                 Vector3 normal = hits[hit].normal;
                 Vector3 travelled = delta / length * Mathf.Clamp(nearest - 0.003f, 0, length);
                 drop.position += travelled;
@@ -324,15 +350,24 @@ namespace Aquarius.Prototype
             {
                 int count = Physics.RaycastNonAlloc(drop.position + Vector3.up * 0.06f, Vector3.down, hits, radius + 0.075f, environmentMask, QueryTriggerInteraction.Ignore);
                 float top = float.NegativeInfinity;
+                Collider support = null;
                 for (int j = 0; j < count; j++)
-                    if (Valid(hits[j].collider) && hits[j].normal.y > 0.45f) top = Mathf.Max(top, hits[j].point.y);
+                    if (Valid(hits[j].collider) && hits[j].normal.y > 0.45f && hits[j].point.y > top)
+                    { top = hits[j].point.y; support = hits[j].collider; }
                 if (drop.position.y <= top + radius + 0.015f)
                 {
+                    if (!held && Absorbs(support)) return true;
                     drop.position.y = top + radius + 0.002f; drop.grounded = true;
                     drop.velocity.y = Mathf.Max(0, drop.velocity.y);
                 }
             }
             if (drop.grounded && !held) drop.velocity *= Mathf.Exp(-12f * dt);
+            return false;
+        }
+        static bool Absorbs(Collider collider)
+        {
+            var surface = collider.GetComponentInParent<WaterAbsorbingSurface>();
+            return surface != null && surface.isActiveAndEnabled;
         }
         bool Valid(Collider collider) => collider != null && !collider.transform.IsChildOf(transform) &&
             (ignoredPlayer == null || !collider.transform.IsChildOf(ignoredPlayer));
